@@ -17,6 +17,13 @@ components:
       bearerFormat: JWT
 
   schemas:
+    # User URN
+    UserURN:
+      type: string
+      pattern: '^urn:mvn:user:[0-9a-fA-F-]{36}$'
+      example: 'urn:mvn:user:123e4567-e89b-12d3-a456-426614174000'
+      description: Unique Uniform Resource Name for a User.
+
     # RFC 7807 Problem Details
     Problem:
       type: object
@@ -48,8 +55,7 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          $ref: '#/components/schemas/UserURN'
         username:
           type: string
         avatar_url:
@@ -99,8 +105,7 @@ components:
       type: object
       properties:
         target_user_id:
-          type: string
-          format: uuid
+          $ref: '#/components/schemas/UserURN'
         type:
           type: string
           enum: [block, mute]
@@ -122,6 +127,18 @@ components:
           type: boolean
       required:
         - has_more
+
+    # Preferences
+    Preferences:
+      type: object
+      properties:
+        blocked_user_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserURN'
+          description: List of User IDs that the current user has blocked.
+      required:
+        - blocked_user_ids
 
 paths:
   /.well-known/openid-configuration:
@@ -203,6 +220,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/v1/me/preferences:
+    get:
+      summary: Get Global Preferences
+      description: Returns global user preferences, including the blocklist.
+      operationId: getPreferences
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User Preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
         '401':
           description: Unauthorized
           content:

@@ -1,0 +1,67 @@
+---
+title: URN Identifiers
+description: Using Uniform Resource Names for Federation and Routing.
+---
+
+# URN Identifiers
+
+MehguViewer uses **URNs (Uniform Resource Names)** as the primary identifier format across the entire protocol. This replaces traditional UUIDs to provide context-aware routing and federation capabilities.
+
+## The Global Namespace
+
+All internal resources live under the `urn:mvn` namespace.
+
+### Format
+`urn:mvn:<resource_type>:<uuid>`
+
+### Examples
+- **User:** `urn:mvn:user:550e8400-e29b-41d4-a716-446655440000`
+- **Series:** `urn:mvn:series:6ba7b810-9dad-11d1-80b4-00c04fd430c8`
+- **Comment:** `urn:mvn:comment:7ca7b810-9dad-11d1-80b4-00c04fd430c9`
+
+## Federation References
+
+To support the "Federated" nature of the protocol, we also support **Source URNs**. These allow different Core Nodes to agree that two different internal Series are actually the same content (e.g., "One Piece").
+
+### Format
+`urn:src:<source_name>:<external_id>`
+
+### Examples
+- **AniList:** `urn:src:anilist:21`
+- **MyAnimeList:** `urn:src:mal:456`
+- **MangaUpdates:** `urn:src:mu:12345`
+
+## Parsing URNs (TypeScript)
+
+The client uses the URN structure to determine routing logic without needing to query the API first.
+
+```typescript
+type UrnParts = {
+  namespace: string;
+  type: 'user' | 'series' | 'comment' | 'unknown';
+  id: string;
+};
+
+export function parseUrn(urn: string): UrnParts {
+  const parts = urn.split(':');
+  
+  // Validate basic structure
+  if (parts.length !== 4 || parts[0] !== 'urn' || parts[1] !== 'mvn') {
+    throw new Error(`Invalid MehguViewer URN: ${urn}`);
+  }
+
+  return {
+    namespace: parts[1],
+    type: parts[2] as UrnParts['type'],
+    id: parts[3]
+  };
+}
+
+// Usage
+const urn = "urn:mvn:series:123-abc";
+const { type, id } = parseUrn(urn);
+
+if (type === 'series') {
+  router.push(`/series/${id}`);
+}
+```

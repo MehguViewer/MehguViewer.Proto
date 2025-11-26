@@ -17,6 +17,26 @@ components:
       bearerFormat: JWT
 
   schemas:
+    # User URN
+    UserURN:
+      type: string
+      pattern: '^urn:mvn:user:[0-9a-fA-F-]{36}$'
+      example: 'urn:mvn:user:123e4567-e89b-12d3-a456-426614174000'
+
+    # Series URN
+    SeriesURN:
+      type: string
+      pattern: '^urn:mvn:series:[0-9a-fA-F-]{36}$'
+      example: 'urn:mvn:series:123e4567-e89b-12d3-a456-426614174000'
+
+    # Federation Reference
+    FederationRef:
+      type: string
+      pattern: '^urn:src:[a-z0-9]+:[a-zA-Z0-9-]+$'
+      example: 'urn:src:anilist:21'
+      nullable: true
+      description: External reference for federation merging.
+
     # RFC 7807 Problem Details
     Problem:
       type: object
@@ -50,82 +70,23 @@ components:
       required:
         - has_more
 
-    # Series (Polymorphic)
-    Series:
+    # Author Snapshot
+    AuthorSnapshot:
       type: object
       properties:
-        id:
+        uid:
+          $ref: '#/components/schemas/UserURN'
+        display_name:
           type: string
-          format: uuid
-        title:
+        avatar_url:
           type: string
-        type:
+          format: uri
+        role_badge:
           type: string
-          enum: [manga, anime, novel]
-        cover_image:
-          type: object
-          properties:
-            url:
-              type: string
-              format: uri
-            alt_text:
-              type: string
-              description: Accessibility text for the cover image.
-          required:
-            - url
-            - alt_text
-        description:
-          type: string
-        content_warnings:
-          type: array
-          items:
-            type: string
-          description: List of content warnings (e.g., "Gore", "Sexual Violence").
-        tags:
-          type: array
-          items:
-            type: string
+          enum: [admin, moderator, translator, user]
       required:
-        - id
-        - title
-        - type
-        - cover_image
-
-    # Unit (Chapter/Episode)
-    Unit:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        series_id:
-          type: string
-          format: uuid
-        number:
-          type: number
-          description: Chapter or Episode number.
-        title:
-          type: string
-          nullable: true
-        pages:
-          type: array
-          items:
-            type: object
-            properties:
-              url:
-                type: string
-                format: uri
-              alt_text:
-                type: string
-            required:
-              - url
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - series_id
-        - number
+        - uid
+        - display_name
 
     # Comment
     Comment:
@@ -137,21 +98,7 @@ components:
         content:
           type: string
         author:
-          type: object
-          properties:
-            id:
-              type: string
-            username:
-              type: string
-            avatar_url:
-              type: string
-            badge:
-              type: string
-              enum: [admin, moderator, translator, user]
-              description: Role badge for the author.
-          required:
-            - id
-            - username
+          $ref: '#/components/schemas/AuthorSnapshot'
         created_at:
           type: string
           format: date-time
@@ -162,14 +109,90 @@ components:
         - content
         - author
 
+    # Series (Polymorphic)
+    Series:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/MangaSeries'
+        - $ref: '#/components/schemas/VideoSeries'
+        - $ref: '#/components/schemas/NovelSeries'
+      discriminator:
+        propertyName: media_type
+        mapping:
+          MANGA: '#/components/schemas/MangaSeries'
+          VIDEO: '#/components/schemas/VideoSeries'
+          NOVEL: '#/components/schemas/NovelSeries'
+
+    # Base Series Properties
+    BaseSeries:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/SeriesURN'
+        federation_ref:
+          $ref: '#/components/schemas/FederationRef'
+        title:
+          type: string
+        description:
+          type: string
+        poster:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            alt_text:
+              type: string
+          required:
+            - url
+            - alt_text
+        media_type:
+          type: string
+          enum: [MANGA, VIDEO, NOVEL]
+      required:
+        - id
+        - title
+        - poster
+        - media_type
+
+    # Manga Series
+    MangaSeries:
+      allOf:
+        - $ref: '#/components/schemas/BaseSeries'
+        - type: object
+          properties:
+            reading_direction:
+              type: string
+              enum: [LTR, RTL, TTB]
+          required:
+            - reading_direction
+
+    # Video Series (Anime)
+    VideoSeries:
+      allOf:
+        - $ref: '#/components/schemas/BaseSeries'
+        - type: object
+          properties:
+            duration_seconds:
+              type: integer
+              description: Average duration of an episode.
+          required:
+            - duration_seconds
+
+    # Novel Series
+    NovelSeries:
+      allOf:
+        - $ref: '#/components/schemas/BaseSeries'
+        - type: object
+
     # Vote
     Vote:
       type: object
       properties:
         target_id:
           type: string
-          format: uuid
-          description: ID of the Comment or Series being voted on.
+          pattern: '^urn:mvn:(series|comment):[0-9a-fA-F-]{36}$'
+          description: URN of the Comment or Series being voted on.
         target_type:
           type: string
           enum: [comment, series]

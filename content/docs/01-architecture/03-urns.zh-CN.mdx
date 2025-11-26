@@ -1,0 +1,67 @@
+---
+title: URN 标识符
+description: 使用统一资源名称进行联邦和路由。
+---
+
+# URN 标识符
+
+MehguViewer 在整个协议中使用 **URN（统一资源名称）** 作为主要标识符格式。这取代了传统的 UUID，以提供上下文感知的路由和联邦功能。
+
+## 全局命名空间
+
+所有内部资源都位于 `urn:mvn` 命名空间下。
+
+### 格式
+`urn:mvn:<资源类型>:<uuid>`
+
+### 示例
+- **用户:** `urn:mvn:user:550e8400-e29b-41d4-a716-446655440000`
+- **系列:** `urn:mvn:series:6ba7b810-9dad-11d1-80b4-00c04fd430c8`
+- **评论:** `urn:mvn:comment:7ca7b810-9dad-11d1-80b4-00c04fd430c9`
+
+## 联邦引用
+
+为了支持协议的"联邦"性质，我们还支持 **源 URN**。这允许不同的 Core 节点达成一致，即两个不同的内部系列实际上是相同的内容（例如，"海贼王"）。
+
+### 格式
+`urn:src:<来源名称>:<外部ID>`
+
+### 示例
+- **AniList:** `urn:src:anilist:21`
+- **MyAnimeList:** `urn:src:mal:456`
+- **MangaUpdates:** `urn:src:mu:12345`
+
+## 解析 URN (TypeScript)
+
+客户端使用 URN 结构来确定路由逻辑，而无需先查询 API。
+
+```typescript
+type UrnParts = {
+  namespace: string;
+  type: 'user' | 'series' | 'comment' | 'unknown';
+  id: string;
+};
+
+export function parseUrn(urn: string): UrnParts {
+  const parts = urn.split(':');
+  
+  // 验证基本结构
+  if (parts.length !== 4 || parts[0] !== 'urn' || parts[1] !== 'mvn') {
+    throw new Error(`无效的 MehguViewer URN: ${urn}`);
+  }
+
+  return {
+    namespace: parts[1],
+    type: parts[2] as UrnParts['type'],
+    id: parts[3]
+  };
+}
+
+// 用法
+const urn = "urn:mvn:series:123-abc";
+const { type, id } = parseUrn(urn);
+
+if (type === 'series') {
+  router.push(`/series/${id}`);
+}
+```
