@@ -5,6 +5,20 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: '/docs',
+        destination: '/docs/v1',
+        permanent: false,
+      },
+      {
+        source: '/:lang/docs',
+        destination: '/:lang/docs/v1',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withMDX(nextConfig);
