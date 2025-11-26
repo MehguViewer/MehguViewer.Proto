@@ -21,6 +21,9 @@ export default async function Layout({
     <html lang={lang} className={inter.className} suppressHydrationWarning>
       <body>
         <RootProvider
+            search={{
+                enabled: true,
+            }}
             i18n={{
                 locale: lang,
                 locales: [
