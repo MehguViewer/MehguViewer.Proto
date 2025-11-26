@@ -1,0 +1,57 @@
+---
+title: Authentication Flow
+description: How Identity works in the MehguViewer Federation.
+---
+
+# Authentication Flow
+
+MehguViewer uses a strict **OIDC (OpenID Connect)** flow to handle identity. This ensures that user credentials never touch the Content Servers (Core), and users can maintain a single identity across the entire federation.
+
+## The Actors
+
+1.  **User (Resource Owner):** The person trying to access content.
+2.  **Client (Web/App):** The interface the user is using.
+3.  **Auth Server (Identity Provider):** The server that holds the user database and issues tokens.
+4.  **Core Server (Resource Server):** The server that holds the Manga/Anime content.
+
+## The Token Lifecycle
+
+### 1. Login (Authorization Code Flow)
+The Client redirects the user to the Auth Server's `/authorize` endpoint.
+- The user enters their credentials on the Auth Server.
+- The Auth Server redirects back to the Client with a `code`.
+- The Client exchanges the `code` for an **Access Token** and a **Refresh Token**.
+
+### 2. Access Token (JWT)
+The Access Token is a short-lived JSON Web Token (e.g., 15 minutes). It contains:
+- `sub`: The User ID.
+- `iss`: The Auth Server URL.
+- `exp`: Expiration time.
+- `global_level`: The user's level.
+
+### 3. Making Requests
+When the Client requests content from a Core Server, it sends the Access Token in the header:
+
+```http
+GET /api/v1/series/123 HTTP/1.1
+Host: core.mehgu.example.com
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+### 4. Verification (Stateless)
+The Core Server receives the request. It does **not** contact the Auth Server to validate every request. Instead:
+1.  It fetches the **Public Keys** from `https://auth.mehgu.example.com/.well-known/jwks.json` (cached).
+2.  It verifies the JWT signature using the public key.
+3.  It checks if the token is expired (`exp`).
+
+If valid, the request proceeds.
+
+## Security Features
+
+### Global Blocklist
+The Auth Server maintains a list of users that a user has blocked.
+- **Client Responsibility:** The Client fetches the blocklist (`GET /api/v1/me/relationships`) and filters out content/comments from blocked users locally.
+- **Core Responsibility:** In the future, Core servers may periodically sync blocklists for server-side filtering, but currently, it is client-side for privacy.
+
+### Session Management
+Users can view and revoke their sessions via `GET /api/v1/sessions`. Revoking a session invalidates the **Refresh Token**, preventing new Access Tokens from being issued. Existing Access Tokens remain valid until they expire (short-lived).

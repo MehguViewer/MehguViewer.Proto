@@ -1,0 +1,60 @@
+---
+title: Protocol Specifications
+description: Data models and federation logic for Content Servers.
+---
+
+# Protocol Specifications
+
+The Core Protocol defines how content is structured and delivered. It is designed to be **Polymorphic**, supporting multiple media types under a unified schema.
+
+## Data Models
+
+### Series (Polymorphic)
+A `Series` is the top-level container. It can represent:
+- **Manga:** A comic with chapters and pages.
+- **Anime:** A video series with episodes.
+- **Novel:** A text-based series with chapters.
+
+The `type` field (`manga` | `anime` | `novel`) determines how the client renders the content.
+
+```json
+{
+  "id": "uuid",
+  "title": "Example Series",
+  "type": "manga",
+  "content_warnings": ["Gore"],
+  "cover_image": {
+    "url": "https://...",
+    "alt_text": "A hero standing on a mountain"
+  }
+}
+```
+
+### Unit
+A `Unit` represents a single consumable entry within a Series.
+- For Manga: A Chapter.
+- For Anime: An Episode.
+- For Novel: A Chapter.
+
+### Accessibility
+All media assets MUST include `alt_text`. This is enforced at the API level to ensure the platform is accessible to screen readers.
+
+## Federation Logic
+
+### Content Discovery
+Clients discover content by querying Core Servers directly. There is no central "Master Index". A client might be configured to talk to `core-a.example.com` and `core-b.example.com`.
+
+### Caching
+Performance is critical. All Core API responses include strict `Cache-Control` headers.
+- **Public Data (Series/Units):** Cached aggressively (e.g., `s-maxage=300`).
+- **User Data (Comments/Votes):** Cached for shorter durations or not at all.
+
+## Social Features
+
+### Comments
+Comments are stored on the Core Server where the content lives.
+- **Author Badges:** Comments include badges like `admin`, `translator`, or `moderator` to help users identify authoritative sources.
+
+### Votes
+Votes are simple Up/Down/Neutral integers (`1`, `-1`, `0`).
+- **Stateless:** The Core Server validates the user's vote using their Access Token.

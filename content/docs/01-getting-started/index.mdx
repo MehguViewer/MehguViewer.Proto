@@ -1,0 +1,59 @@
+---
+title: Getting Started
+description: Introduction to the MehguViewer Federated Protocol.
+---
+
+# Getting Started
+
+Welcome to the **MehguViewer Protocol** documentation. This guide will introduce you to the architecture, the core concepts, and how the different components interact to create a seamless federated media experience.
+
+## What is MehguViewer?
+
+MehguViewer is a **Federated Media Protocol** designed to decentralize the consumption of Manga, Anime, and Novels. Unlike traditional centralized platforms, MehguViewer allows multiple independent servers to interoperate, sharing content and user identities while maintaining their own sovereignty.
+
+It solves the problem of fragmentation in the community by providing a unified API standard that any client (Web, Mobile, Desktop) can consume.
+
+## The Three Pillars
+
+The architecture is built upon three distinct pillars, each with a specific responsibility:
+
+### 1. Auth (Identity Provider)
+The **Auth** pillar is the source of truth for user identity. It handles:
+- **Authentication:** OIDC-compliant login flows.
+- **Global Profile:** Your username, avatar, and global experience level (XP) travel with you across the federation.
+- **Security:** Manages blocklists and mutes that apply globally, protecting you wherever you go.
+
+### 2. Core (Content Delivery)
+The **Core** pillar is responsible for the actual media. It handles:
+- **Federated Content:** Serving Series (Manga/Anime/Novel) and Units (Chapters/Episodes).
+- **Local Social:** Comments and votes that live on the specific Core server hosting the content.
+- **Performance:** Optimized delivery with strict caching policies.
+
+### 3. Web (The Client)
+The **Web** pillar (or any other client) is the interface the user interacts with. It is stateless and aggregates data from the Auth and Core pillars to present a unified UI.
+
+## The Handshake Workflow
+
+Understanding how a client connects to the federation is crucial. Here is the step-by-Step handshake workflow:
+
+1.  **Client Initiation:**
+    The user opens the MehguViewer client and clicks "Login".
+
+2.  **Authentication (Auth Pillar):**
+    The client redirects the user to the **Auth Server**. The user logs in, and the Auth Server issues an **Access Token** (JWT) and a **Refresh Token**.
+
+3.  **Service Discovery:**
+    The client wants to view a specific Manga. It resolves the URL to a specific **Core Server**.
+
+4.  **The Handshake (Core Pillar):**
+    The client makes a request to the Core Server (e.g., `GET /api/v1/series/123`) and attaches the **Access Token** in the `Authorization` header.
+
+5.  **Verification:**
+    The Core Server receives the request. It does **not** have the user's password. Instead, it fetches the **Public Keys (JWKS)** from the Auth Server's `/.well-known/jwks.json` endpoint.
+
+6.  **Validation:**
+    The Core Server verifies the signature of the Access Token using the Public Keys.
+    - If valid: The Core Server trusts the user's identity (User ID, Global Level) contained in the token claims and serves the content.
+    - If invalid: The request is rejected with a `401 Unauthorized` error.
+
+This "Stateless Auth" mechanism allows any Core server to trust any user from the Auth server without needing a direct database connection between them.

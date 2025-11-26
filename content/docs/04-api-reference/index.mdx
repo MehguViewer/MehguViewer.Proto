@@ -1,0 +1,33 @@
+---
+title: API Reference
+description: Interactive API documentation for Auth and Core services.
+---
+
+# API Reference
+
+The MehguViewer Protocol is split into two distinct APIs. You can explore the interactive documentation for each below.
+
+## [Auth API](/api-reference/auth)
+The **Identity Provider** API.
+- **Base URL:** `https://auth.mehgu.example.com`
+- **Key Endpoints:**
+    - `/.well-known/openid-configuration`: Discovery.
+    - `/api/v1/me`: User Profile.
+    - `/api/v1/me/relationships`: Blocklist management.
+
+[Open Interactive Auth Docs ->](/api-reference/auth)
+
+## [Core API](/api-reference/core)
+The **Content Delivery** API.
+- **Base URL:** `https://core.mehgu.example.com`
+- **Key Endpoints:**
+    - `/api/v1/series`: List Manga/Anime.
+    - `/api/v1/series/{id}/units`: Get Chapters/Episodes.
+    - `/api/v1/comments`: Social interactions.
+
+[Open Interactive Core Docs ->](/api-reference/core)
+
+## OpenAPI Specifications
+You can download the raw OpenAPI (Swagger) files here:
+- [Auth Specification (YAML)](/specs/auth/openapi.yaml)
+- [Core Specification (YAML)](/specs/core/openapi.yaml)
