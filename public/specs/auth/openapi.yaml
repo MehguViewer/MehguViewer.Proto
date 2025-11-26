@@ -10,6 +10,24 @@ servers:
     description: Production Auth Server
 
 components:
+  headers:
+    X-RateLimit-Limit:
+      description: The maximum number of requests that the consumer is permitted to make per minute.
+      schema:
+        type: integer
+    X-RateLimit-Remaining:
+      description: The number of requests remaining in the current rate limit window.
+      schema:
+        type: integer
+    Access-Control-Allow-Origin:
+      description: Indicates whether the response can be shared with requesting code from the given origin.
+      schema:
+        type: string
+    Server-Timing:
+      description: Communicates one or more metrics and descriptions for the given request-response cycle.
+      schema:
+        type: string
+
   securitySchemes:
     BearerAuth:
       type: http
@@ -318,6 +336,15 @@ paths:
       responses:
         '200':
           description: List of sessions
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            Access-Control-Allow-Origin:
+              $ref: '#/components/headers/Access-Control-Allow-Origin'
+            Server-Timing:
+              $ref: '#/components/headers/Server-Timing'
           content:
             application/json:
               schema:
@@ -328,14 +355,40 @@ paths:
                     items:
                       $ref: '#/components/schemas/Session'
     delete:
+      summary: Revoke All Other Sessions
+      description: Log out all other devices except the current one.
+      operationId: revokeAllSessions
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Sessions revoked
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            Access-Control-Allow-Origin:
+              $ref: '#/components/headers/Access-Control-Allow-Origin'
+            Server-Timing:
+              $ref: '#/components/headers/Server-Timing'
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/v1/sessions/{sessionId}:
+    delete:
       summary: Revoke Session
       description: Revoke a specific session (refresh token).
       operationId: revokeSession
       security:
         - BearerAuth: []
       parameters:
-        - name: session_id
-          in: query
+        - name: sessionId
+          in: path
           required: true
           schema:
             type: string
@@ -343,6 +396,15 @@ paths:
       responses:
         '204':
           description: Session revoked
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            Access-Control-Allow-Origin:
+              $ref: '#/components/headers/Access-Control-Allow-Origin'
+            Server-Timing:
+              $ref: '#/components/headers/Server-Timing'
         '404':
           description: Session not found
           content:

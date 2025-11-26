@@ -1,19 +1,11 @@
-'use client';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import ScalarWrapper from '@/components/ScalarWrapper';
 
-import { ApiReferenceReact } from '@scalar/api-reference-react';
-import '@scalar/api-reference-react/style.css';
+export default async function CoreApiPage() {
+  const filePath = path.join(process.cwd(), 'public/specs/core/openapi.yaml');
+  const specContent = await readFile(filePath, 'utf-8');
 
-export default function CoreApiPage() {
-  return (
-    <ApiReferenceReact
-      configuration={{
-        spec: {
-          url: '/specs/core/openapi.yaml',
-        },
-        theme: 'deepSpace',
-        darkMode: true,
-        hideModels: true,
-      } as any}
-    />
-  );
+  return <ScalarWrapper specContent={specContent} />;
 }
+

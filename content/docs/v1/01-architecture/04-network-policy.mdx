@@ -1,0 +1,48 @@
+---
+title: Network Policy
+description: Mandatory headers, CORS rules, and rate limiting for the Federation.
+---
+
+# Network Policy
+
+To ensure a stable and responsive Federation, all MehguViewer Nodes (Core and Auth) must adhere to a strict set of network policies. These rules govern how Clients interact with Servers and how Servers protect themselves from abuse.
+
+## 1. Cross-Origin Resource Sharing (CORS)
+
+Since the MehguViewer Web Client is a Single Page Application (SPA) that may be hosted on a different domain than the Core Nodes it connects to, **CORS must be enabled** on all public API endpoints.
+
+### Required Headers
+All API responses **must** include the following header to allow the Web Client to fetch data:
+
+-   `Access-Control-Allow-Origin`: `*` (or the specific domain of the official Web Client)
+-   `Access-Control-Allow-Methods`: `GET, POST, PUT, DELETE, OPTIONS`
+-   `Access-Control-Allow-Headers`: `Content-Type, Authorization`
+
+## 2. Rate Limiting
+
+Federated networks are vulnerable to spam and denial-of-service attacks. Therefore, **Rate Limiting is mandatory** for all public endpoints.
+
+### The "429" Rule
+Clients **MUST** respect the `429 Too Many Requests` status code.
+-   If a Client receives a 429, it **must** stop sending requests immediately.
+-   It should wait for the duration specified in the `Retry-After` header (if present) or calculate the wait time using the Rate Limit headers.
+-   **Penalty:** Servers are encouraged to permanently ban IP addresses that aggressively ignore 429 signals.
+
+### Rate Limit Headers
+To help Clients manage their request pace, Servers must include these headers in every response:
+
+| Header | Description |
+| :--- | :--- |
+| `X-RateLimit-Limit` | The maximum number of requests permitted per window (e.g., per minute). |
+| `X-RateLimit-Remaining` | The number of requests left in the current window. |
+| `X-RateLimit-Reset` | (Optional) The UNIX timestamp when the window resets. |
+
+## 3. Performance Tracing
+
+To assist with debugging latency issues across the distributed network, Servers should implement the `Server-Timing` header.
+
+```http
+Server-Timing: db;dur=53, cache;dur=23.2
+```
+
+This allows the Web Client to display a breakdown of where time was spent (e.g., "Database: 53ms", "Cache: 23ms") without exposing sensitive internal details.
