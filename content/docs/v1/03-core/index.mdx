@@ -58,3 +58,32 @@ Comments are stored on the Core Server where the content lives.
 ### Votes
 Votes are simple Up/Down/Neutral integers (`1`, `-1`, `0`).
 - **Stateless:** The Core Server validates the user's vote using their Access Token.
+
+## Management Features
+
+### Content Ingestion
+[**Read More ->**](/docs/v1/03-core/02-content-ingestion)
+
+Admins can upload content via:
+- **Bulk Upload:** ZIP/CBZ archives.
+- **Manual Upload:** Creating Units and adding pages one-by-one.
+
+### Async Workflows
+[**Read More ->**](/docs/v1/03-core/08-async-jobs)
+
+Long-running tasks like bulk ingestion and history imports use a Job-based polling system.
+
+### System Configuration
+Admins can manage node settings dynamically via `PATCH /api/v1/admin/configuration` (e.g., toggling registration, setting MOTD).
+
+## Discovery & Migration
+
+### Taxonomy
+To support rich search filters, the Core Node exposes its available metadata via `GET /api/v1/taxonomy`. This returns:
+- **Genres:** (e.g., "Action", "Isekai")
+- **Content Warnings:** (e.g., "Gore")
+- **Types:** (e.g., "Manga", "Novel")
+- **Scanlators:** Active groups on the node.
+
+### Batch Operations
+To facilitate migration from other services (e.g., MAL, Anilist) without hitting rate limits, the API supports batch history imports via `POST /api/v1/me/history/batch`. This endpoint accepts up to 1000 items per request.

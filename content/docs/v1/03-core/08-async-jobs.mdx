@@ -1,0 +1,97 @@
+---
+title: Async Workflows
+description: Handling long-running tasks like ingestion and migration.
+---
+
+# Async Workflows
+
+For operations that take more than a few seconds (e.g., unpacking a 500MB ZIP file, importing 10,000 history items), the Core API uses an asynchronous "Job" pattern.
+
+## The Job Lifecycle
+
+Instead of blocking the HTTP request until completion, the server immediately returns a `202 Accepted` response.
+
+### 1. Initiation
+
+When you trigger a long-running task:
+
+```http
+POST /api/v1/series/{id}/chapters
+Content-Type: multipart/form-data
+...
+```
+
+The server responds with:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /api/v1/jobs/550e8400-e29b-41d4-a716-446655440000
+
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "processing"
+}
+```
+
+### 2. Polling
+
+The client should poll the URL provided in the `Location` header (or construct it using the `job_id`) every few seconds.
+
+**Endpoint:** `GET /api/v1/jobs/{job_id}`
+
+**Response (Processing):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "INGEST_CHAPTER",
+  "status": "PROCESSING",
+  "progress_percentage": 45,
+  "result_urn": null,
+  "error_details": null
+}
+```
+
+### 3. Completion
+
+When `status` becomes `COMPLETED` or `FAILED`, the client can stop polling.
+
+**Response (Success):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "INGEST_CHAPTER",
+  "status": "COMPLETED",
+  "progress_percentage": 100,
+  "result_urn": "urn:mvn:unit:...",
+  "error_details": null
+}
+```
+
+## UI Patterns
+
+### Optimistic UI vs. Polled State
+
+*   **Optimistic UI:** For small actions (like "Like" or "Mark Read"), assume success immediately.
+*   **Polled State:** For Jobs, **do not** use Optimistic UI. Show a progress bar or a "Processing..." spinner. The user needs to know if the server actually unpacked their file correctly.
+
+### Recommended Flow
+
+<Mermaid chart={`
+sequenceDiagram
+    participant User
+    participant Client
+    participant Core
+
+    User->>Client: Upload ZIP
+    Client->>Core: POST /chapters
+    Core-->>Client: 202 Accepted (Job ID)
+    
+    loop Every 2 Seconds
+        Client->>Core: GET /jobs/{id}
+        Core-->>Client: { status: "PROCESSING", progress: 45 }
+        Client-->>User: Update Progress Bar
+    end
+
+    Core-->>Client: { status: "COMPLETED", result_urn: "..." }
+    Client->>Client: Redirect to New Chapter
+`} />

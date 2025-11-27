@@ -1,0 +1,54 @@
+---
+title: Setup & Privacy
+description: Node initialization, admin claiming, and user privacy rights.
+---
+
+# Setup & Privacy
+
+This guide covers the initial setup of a MehguViewer Core Node and the privacy mechanisms built into the protocol.
+
+## 1. The "First User" Claim
+
+When a Core Node is first deployed, it has no database and no users. The system enters a special **Setup Mode**.
+
+### The Claim Flow
+
+1.  **Deployment:** The Admin starts the Core Node container.
+2.  **Discovery:** The Node detects an empty database.
+3.  **Registration:** The **first user** to register via `POST /api/v1/auth/register` (proxied to Auth Server) is automatically granted the `mvn:admin` scope.
+4.  **Lockdown:** Once the first admin is created, the Node switches to **Production Mode**. Subsequent registrations are treated as standard users (defaulting to `mvn:read` and `mvn:social:write`).
+
+### Security Note
+Admins should register immediately after deployment to prevent unauthorized takeover.
+
+## 2. System Configuration
+
+Admins can manage the node's behavior dynamically without restarting the container.
+
+**Endpoint:** `PATCH /api/v1/admin/configuration`
+
+### Key Settings
+*   **`registration_open`**: Toggle to `false` to make the node private (Invite Only).
+*   **`maintenance_mode`**: If `true`, all non-admin requests return `503 Service Unavailable`.
+*   **`motd_message`**: A "Message of the Day" displayed to all clients.
+
+## 3. Privacy & GDPR
+
+MehguViewer is designed with "Right to Erasure" in mind.
+
+### Account Deletion
+When a user requests deletion via `DELETE /api/v1/me`:
+
+1.  **Auth Server:**
+    *   The User record is permanently deleted.
+    *   All active sessions are revoked.
+    *   Personal data (email, password hash) is wiped.
+
+2.  **Core Nodes (Federated Deletion):**
+    *   The Auth Server broadcasts a `user.deleted` event (or Core Nodes discover it upon token validation failure).
+    *   **Comments & Reviews:** Are **not** deleted to preserve conversation context. Instead, the `author_urn` is migrated to a system ghost user: `urn:mvn:user:deleted`.
+    *   **Votes:** Are preserved anonymously.
+    *   **Reading History:** Is permanently deleted.
+
+### Data Export
+Users can request a full export of their data (Reading History, Lists) via `GET /api/v1/me/export` (Implementation pending).

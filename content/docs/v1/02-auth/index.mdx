@@ -55,3 +55,9 @@ The Auth Server maintains a list of users that a user has blocked.
 
 ### Session Management
 Users can view and revoke their sessions via `GET /api/v1/sessions`. Revoking a session invalidates the **Refresh Token**, preventing new Access Tokens from being issued. Existing Access Tokens remain valid until they expire (short-lived).
+
+### Profile Management
+Users have full control over their account data.
+- **Update Profile:** `PATCH /api/v1/me` (Display Name, Avatar, Locale).
+- **Change Password:** `PUT /api/v1/me/password`.
+- **Delete Account:** `DELETE /api/v1/me` (Triggers GDPR erasure).

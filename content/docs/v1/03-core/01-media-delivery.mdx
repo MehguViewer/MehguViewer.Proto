@@ -64,6 +64,20 @@ sequenceDiagram
 *   **Cons:** Relies on CDN security (e.g., signed cookies or public buckets).
 *   **Usage:** Preferred when `image_cdn_url` is available.
 
+### 3. Tiered Image Strategy
+
+To optimize bandwidth and performance, the Core Node enforces a 3-Tier image strategy. Clients SHOULD request the appropriate variant for their context.
+
+**Endpoint:** `GET /api/v1/assets/{asset_urn}?variant={type}`
+
+| Variant | Max Width | Format | Use Case |
+| :--- | :--- | :--- | :--- |
+| `THUMBNAIL` | 400px | WebP/JPEG | Grid views, Lists, Avatars |
+| `WEB` | 1600px | WebP/AVIF | **Default.** Reading view, Page display |
+| `RAW` | Original | Original | Archival, Downloads, "Original Quality" mode |
+
+**Note:** Core Nodes are expected to pre-generate `THUMBNAIL` and `WEB` variants upon ingestion.
+
 ---
 
 ## Read Progress Tracking

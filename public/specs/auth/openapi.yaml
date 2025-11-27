@@ -167,6 +167,45 @@ components:
       required:
         - blocked_user_ids
 
+    # User Profile Update
+    UserProfileUpdate:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        avatar_url:
+          type: string
+          format: uri
+        locale:
+          type: string
+          example: "en-US"
+      minProperties: 1
+
+    # Password Change
+    PasswordChange:
+      type: object
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 8
+      required:
+        - current_password
+        - new_password
+
+    # Account Deletion
+    AccountDeletion:
+      type: object
+      properties:
+        password:
+          type: string
+          description: Password confirmation required to delete account.
+      required:
+        - password
+
 paths:
   /.well-known/openid-configuration:
     get:
@@ -198,6 +237,10 @@ paths:
                     items:
                       type: string
                   id_token_signing_alg_values_supported:
+                    type: array
+                    items:
+                      type: string
+                  scopes_supported:
                     type: array
                     items:
                       type: string
@@ -307,6 +350,69 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+    patch:
+      summary: Update Profile
+      description: Update display name, avatar, or locale. Changes reflect in the next JWT.
+      operationId: updateMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdate'
+      responses:
+        '200':
+          description: Profile Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid Input
+        '401':
+          description: Unauthorized
+    delete:
+      summary: Delete Account
+      description: Permanently delete the user account. Requires password confirmation.
+      operationId: deleteMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDeletion'
+      responses:
+        '204':
+          description: Account Deleted
+        '401':
+          description: Unauthorized (or Wrong Password)
+
+  /api/v1/me/password:
+    put:
+      summary: Change Password
+      operationId: changePassword
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+      responses:
+        '204':
+          description: Password Changed
+        '400':
+          description: Invalid Password
+        '401':
+          description: Unauthorized
 
   /api/v1/me/preferences:
     get:
