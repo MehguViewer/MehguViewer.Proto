@@ -1,26 +1,29 @@
-import { type HomeLayoutProps } from 'fumadocs-ui/layouts/home';
-import { i18n } from '@/lib/i18n';
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import Image from 'next/image';
 
-export const baseOptions: HomeLayoutProps = {
+export const baseOptions: BaseLayoutProps = {
   nav: {
-    title: 'MehguViewer.Proto',
+    title: (
+        <div className="flex items-center gap-2">
+            <Image 
+                src="/logo-light.png" 
+                alt="MehguViewer" 
+                width={30} 
+                height={30} 
+            />
+            <span className="font-semibold">MehguViewer.Proto</span>
+        </div>
+    ),
   },
-  i18n: true,
   links: [
     {
       text: 'Documentation',
       url: '/docs',
       active: 'nested-url',
     },
-    {
-      text: 'Core API',
-      url: '/api-reference/core',
-      active: 'nested-url',
-    },
-    {
-      text: 'Auth API',
-      url: '/api-reference/auth',
-      active: 'nested-url',
-    },
   ],
+  i18n: true,
+  themeSwitch: {
+    enabled: false,
+  },
 };

@@ -1,0 +1,11 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "index",
+    "02-trust-model",
+    "03-urns",
+    "04-network-policy",
+    "05-node-discovery",
+    "06-library-sync"
+  ]
+}

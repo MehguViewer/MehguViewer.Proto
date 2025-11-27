@@ -1,4 +1,10 @@
-# MehguViewer.Proto
+<div align="center">
+  <picture>
+    <img alt="MehguViewer Logo" src="public/thumbnail.png" width="400">
+  </picture>
+</div>
+
+# <picture><img alt="MehguViewer Logo" src="public/logo-light.png" height="32"></picture> MehguViewer.Porto <picture><img alt="MehguViewer Logo" src="public/logo-dark.png" height="32"></picture>
 
 > **The Official Protocol Specification & Documentation for the MehguViewer Ecosystem.**
 

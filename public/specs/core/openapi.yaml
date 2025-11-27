@@ -223,7 +223,98 @@ components:
         - target_type
         - value
 
+    # Unit (Chapter/Episode)
+    Unit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        series_id:
+          $ref: '#/components/schemas/SeriesURN'
+        unit_number:
+          type: number
+          description: The chapter or episode number (e.g., 1, 1.5).
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - series_id
+        - unit_number
+
+    # Reading Progress
+    ReadingProgress:
+      type: object
+      properties:
+        series_urn:
+          $ref: '#/components/schemas/SeriesURN'
+        chapter_id:
+          type: string
+        page_number:
+          type: integer
+        status:
+          type: string
+          enum: [reading, completed, dropped, plan_to_read]
+        updated_at:
+          type: integer
+          format: int64
+          description: UNIX timestamp (ms)
+      required:
+        - series_urn
+        - chapter_id
+        - page_number
+        - status
+        - updated_at
+
 paths:
+  /.well-known/mehgu-node:
+    get:
+      summary: Node Discovery
+      description: Returns the public identity and capabilities of this node.
+      operationId: getWellKnownNode
+      security: []
+      responses:
+        '200':
+          description: Node Metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  node_name:
+                    type: string
+                  description:
+                    type: string
+                  auth_server:
+                    type: string
+                    format: uri
+                  capabilities:
+                    type: object
+                    properties:
+                      search:
+                        type: boolean
+                      streaming:
+                        type: boolean
+                      download:
+                        type: boolean
+                  maintainer:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      email:
+                        type: string
+                        format: email
+                required:
+                  - version
+                  - node_name
+                  - auth_server
+
   /api/v1/instance:
     get:
       summary: Get Node Manifest
@@ -469,6 +560,59 @@ paths:
       responses:
         '200':
           description: Vote recorded
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/v1/me/progress:
+    post:
+      summary: Sync Reading Progress
+      description: Push a progress update for a specific series.
+      operationId: syncProgress
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadingProgress'
+      responses:
+        '200':
+          description: Progress Synced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/v1/me/library:
+    get:
+      summary: Get Library State
+      description: Pull the latest progress for all series.
+      operationId: getLibrary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Library State
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReadingProgress'
         '401':
           description: Unauthorized
           content:

@@ -1,0 +1,55 @@
+---
+title: 节点发现
+description: 客户端如何发现并连接到 MehguViewer 核心节点。
+---
+
+# 节点发现
+
+与中心化平台不同，MehguViewer 没有单一的“主”服务器。相反，必须告知客户端连接到哪些核心节点。本节概述了发现和连接过程。
+
+## 1. 手动连接
+
+添加节点的主要方法是**手动输入**。用户提供他们希望连接的核心节点的基本 URL。
+
+-   **示例 URL:** `https://core.mehgu.example.com`
+-   **用户操作:** 用户将此 URL 输入到客户端的“添加服务器”对话框中。
+
+## 2. 众所周知的端点 (Well-Known Endpoint)
+
+为了验证 URL 是否指向有效的 MehguViewer 核心节点并获取其元数据，客户端会对标准化的发现端点执行 `GET` 请求。
+
+**端点:** `/.well-known/mehgu-node`
+
+### 响应格式
+
+节点必须返回包含其身份和功能的 JSON 对象。
+
+```json
+{
+  "version": "1.0.0",
+  "node_name": "Mehgu Official Public Node",
+  "description": "The official public access node for MehguViewer.",
+  "auth_server": "https://auth.mehgu.example.com",
+  "capabilities": {
+    "search": true,
+    "streaming": true,
+    "download": false
+  },
+  "maintainer": {
+    "name": "Admin",
+    "email": "admin@example.com"
+  }
+}
+```
+
+### 验证步骤
+1.  **获取:** 客户端请求 `GET <InputURL>/.well-known/mehgu-node`。
+2.  **解析:** 客户端解析 JSON 响应。
+3.  **检查版本:** 客户端确保节点版本兼容。
+4.  **认证发现:** 客户端记录 `auth_server` URL 以供将来的登录流程使用。
+
+## 3. 节点列表 (可选)
+
+虽然不是核心协议的一部分，但可能存在社区维护的“节点列表”。这些是托管在 GitHub 或其他静态站点上的简单 JSON 文件，列出了受信任的公共节点。
+
+客户端可以选择支持导入这些列表以填充服务器选择屏幕。

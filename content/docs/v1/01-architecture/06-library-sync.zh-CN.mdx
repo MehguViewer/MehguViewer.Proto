@@ -1,0 +1,52 @@
+---
+title: 库同步
+description: 在设备之间同步阅读进度和书签。
+---
+
+# 库同步
+
+MehguViewer 确保您在所有设备上的阅读体验是无缝的。无论您是从手机切换到桌面，还是在不同的 Web 浏览器之间切换，您的进度和库状态都会跟随您。
+
+## 1. 进度对象 (The Progress Object)
+
+阅读进度是按系列跟踪的。核心节点为每个用户和系列对存储一个“进度对象”。
+
+### 数据结构
+
+```typescript
+interface ReadingProgress {
+  series_urn: string;      // 系列的 URN (例如, urn:mvn:series:...)
+  chapter_id: string;      // 当前正在阅读的章节 ID
+  page_number: number;     // 最后阅读的页码 (从 1 开始)
+  status: 'reading' | 'completed' | 'dropped' | 'plan_to_read';
+  updated_at: number;      // 上次更新的 UNIX 时间戳 (毫秒)
+}
+```
+
+## 2. 同步流程
+
+### 推送更新
+每当用户翻页或完成一章时，客户端都会向核心节点发送轻量级的“心跳”或更新请求。
+
+-   **端点:** `POST /api/v1/me/progress`
+-   **负载:** 部分 `ReadingProgress` 对象。
+-   **频率:** 客户端应对这些请求进行去抖动处理（例如，每 5 秒或在章节更改时），以避免淹没服务器。
+
+### 拉取状态
+当客户端应用程序启动或从后台恢复时，它会获取可见系列或整个库的最新进度。
+
+-   **端点:** `GET /api/v1/me/library`
+-   **响应:** `ReadingProgress` 对象列表。
+
+## 3. 冲突解决
+
+由于用户可能离线阅读或同时在多个设备上阅读，因此可能会发生冲突。MehguViewer 使用基于 `updated_at` 时间戳的简单**最后写入胜出 (LWW)** 策略。
+
+1.  **服务器端:** 收到 `POST` 更新时，服务器会将负载的 `updated_at` 与存储的时间戳进行比较。
+2.  **逻辑:**
+    -   如果 `payload.updated_at > stored.updated_at`: **接受更新**。
+    -   如果 `payload.updated_at <= stored.updated_at`: **忽略更新** (客户端发送的是陈旧数据)。
+
+## 4. 书签和列表
+
+除了简单的页面跟踪之外，用户还可以将系列整理到列表中。此 `status` 字段是同一进度对象的一部分，确保将系列移动到“已完成”与翻页一样进行同步。

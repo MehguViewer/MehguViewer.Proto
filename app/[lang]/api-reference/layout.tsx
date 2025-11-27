@@ -1,22 +1,20 @@
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import type { ReactNode } from 'react';
-import { baseOptions } from '@/app/layout.config';
-import { source } from '@/lib/source';
+import { HomeLayout } from 'fumadocs-ui/layouts/home';
+import { baseOptions } from '../../layout.config';
 import { dictionary } from '@/lib/dictionary';
+import type { ReactNode } from 'react';
 
-export default async function Layout({ 
-  params, 
-  children 
-}: { 
-  params: Promise<{ lang: string }>;
+export default async function ApiReferenceLayout({
+  children,
+  params,
+}: {
   children: ReactNode;
+  params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
   const dict = dictionary[lang as keyof typeof dictionary] || dictionary.en;
-  
+
   return (
-    <DocsLayout 
-      tree={source.pageTree[lang]} 
+    <HomeLayout
       {...baseOptions}
       links={[
         {
@@ -35,8 +33,11 @@ export default async function Layout({
           active: 'nested-url',
         }
       ]}
+      searchToggle={{
+        enabled: false
+      }}
     >
       {children}
-    </DocsLayout>
+    </HomeLayout>
   );
 }

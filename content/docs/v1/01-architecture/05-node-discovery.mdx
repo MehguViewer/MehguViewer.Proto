@@ -1,0 +1,55 @@
+---
+title: Node Discovery
+description: How clients find and connect to MehguViewer Core Nodes.
+---
+
+# Node Discovery
+
+Unlike centralized platforms, MehguViewer does not have a single "home" server. Instead, clients must be told which Core Nodes to connect to. This section outlines the discovery and connection process.
+
+## 1. Manual Connection
+
+The primary method for adding a node is **Manual Entry**. The user provides the base URL of a Core Node they wish to connect to.
+
+-   **Example URL:** `https://core.mehgu.example.com`
+-   **User Action:** The user enters this URL into the client's "Add Server" dialog.
+
+## 2. The Well-Known Endpoint
+
+To verify that a URL points to a valid MehguViewer Core Node and to fetch its metadata, the client performs a `GET` request to a standardized discovery endpoint.
+
+**Endpoint:** `/.well-known/mehgu-node`
+
+### Response Format
+
+The node must return a JSON object containing its identity and capabilities.
+
+```json
+{
+  "version": "1.0.0",
+  "node_name": "Mehgu Official Public Node",
+  "description": "The official public access node for MehguViewer.",
+  "auth_server": "https://auth.mehgu.example.com",
+  "capabilities": {
+    "search": true,
+    "streaming": true,
+    "download": false
+  },
+  "maintainer": {
+    "name": "Admin",
+    "email": "admin@example.com"
+  }
+}
+```
+
+### Validation Steps
+1.  **Fetch:** Client requests `GET <InputURL>/.well-known/mehgu-node`.
+2.  **Parse:** Client parses the JSON response.
+3.  **Check Version:** Client ensures the node version is compatible.
+4.  **Auth Discovery:** Client notes the `auth_server` URL for future login flows.
+
+## 3. Node Lists (Optional)
+
+While not part of the core protocol, community-maintained "Node Lists" may exist. These are simple JSON files hosted on GitHub or other static sites that list trusted public nodes.
+
+Clients may optionally support importing these lists to populate the server selection screen.

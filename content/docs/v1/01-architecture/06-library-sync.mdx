@@ -1,0 +1,52 @@
+---
+title: Library Sync
+description: Synchronizing reading progress and bookmarks across devices.
+---
+
+# Library Sync
+
+MehguViewer ensures that your reading experience is seamless across all your devices. Whether you switch from your phone to your desktop or between different web browsers, your progress and library status follow you.
+
+## 1. The Progress Object
+
+Reading progress is tracked per-series. The Core Node stores a "Progress Object" for each user and series pair.
+
+### Data Structure
+
+```typescript
+interface ReadingProgress {
+  series_urn: string;      // The URN of the series (e.g., urn:mvn:series:...)
+  chapter_id: string;      // The ID of the chapter currently being read
+  page_number: number;     // The last read page number (1-indexed)
+  status: 'reading' | 'completed' | 'dropped' | 'plan_to_read';
+  updated_at: number;      // UNIX timestamp (ms) of the last update
+}
+```
+
+## 2. Synchronization Flow
+
+### Pushing Updates
+Whenever a user turns a page or finishes a chapter, the client sends a lightweight "heartbeat" or update request to the Core Node.
+
+-   **Endpoint:** `POST /api/v1/me/progress`
+-   **Payload:** Partial `ReadingProgress` object.
+-   **Frequency:** Clients should debounce these requests (e.g., every 5 seconds or on chapter change) to avoid flooding the server.
+
+### Pulling State
+When the client application starts or resumes from the background, it fetches the latest progress for the visible series or the entire library.
+
+-   **Endpoint:** `GET /api/v1/me/library`
+-   **Response:** A list of `ReadingProgress` objects.
+
+## 3. Conflict Resolution
+
+Since a user might read offline or on multiple devices simultaneously, conflicts can occur. MehguViewer uses a simple **Last Write Wins (LWW)** strategy based on the `updated_at` timestamp.
+
+1.  **Server-Side:** When receiving a `POST` update, the server compares the payload's `updated_at` with the stored timestamp.
+2.  **Logic:**
+    -   If `payload.updated_at > stored.updated_at`: **Update Accepted**.
+    -   If `payload.updated_at <= stored.updated_at`: **Update Ignored** (Client is sending stale data).
+
+## 4. Bookmarks & Lists
+
+Beyond simple page tracking, users can organize series into lists. This `status` field is part of the same Progress Object, ensuring that moving a series to "Completed" is synced just like a page turn.
