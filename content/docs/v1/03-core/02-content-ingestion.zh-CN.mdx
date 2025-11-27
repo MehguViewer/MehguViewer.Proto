@@ -1,0 +1,76 @@
+---
+title: 内容注入
+description: 将内容上传到 MehguViewer 核心节点的生命周期。
+---
+
+# 内容注入生命周期
+
+MehguViewer 核心节点支持强大的注入管道,旨在高效处理大型压缩包(ZIP/CBZ/EPUB)。此过程是异步的,以确保 API 保持响应。
+
+## 上传流程
+
+<Mermaid chart={`
+sequenceDiagram
+    participant Admin as 管理员
+    participant API
+    participant Worker as 后台工作器
+    participant Storage as 存储
+    participant DB as 数据库
+
+    Admin->>API: POST /api/v1/series (创建元数据)
+    API-->>Admin: 201 已创建 (系列 ID)
+    
+    Admin->>API: POST /api/v1/series/{id}/chapters (分段上传)
+    API->>Storage: 流式传输到临时存储
+    API-->>Admin: 202 已接受 (任务 ID)
+    
+    API->>Worker: 入队任务
+    Worker->>Storage: 读取压缩包
+    loop 对于每个图像
+        Worker->>Worker: 计算哈希 (SHA-256)
+        Worker->>Storage: 保存优化资源
+        Worker->>DB: 创建资源记录 (urn:mvn:asset:...)
+    end
+    Worker->>DB: 创建单元记录
+    Worker->>DB: 更新系列"最后更新"
+`} />
+
+### 1. 元数据创建
+首先,管理员创建系列容器。这建立了 `urn:mvn:series:{uuid}` 并定义媒体类型(漫画、视频、小说)。
+
+### 2. 压缩包上传(批量)
+管理员将章节作为单个压缩文件上传。
+*   **端点:** `POST /api/v1/series/{id}/chapters`
+*   **格式:** `multipart/form-data`
+*   **参数:**
+    *   `file`: .zip/.cbz 压缩包。
+    *   `metadata`: JSON 字符串(标题、编号)。
+    *   `parser_config`: (可选) 配置文件名解析的 JSON 字符串(例如正则表达式)。
+*   **响应:** `202 已接受`
+
+服务器**不会**立即处理图像。它将文件流式传输到临时存储并返回任务 ID。
+
+### 3. 手动上传(精细)
+为了更好的控制,或在使用外部 CDN 时,管理员可以使用精细上传流程。
+
+1.  **创建单元容器:**
+    *   `POST /api/v1/series/{id}/units`
+    *   载荷: `{ "unit_number": 1, "title": "第 1 章" }`
+    *   返回: `{ "id": "unit_uuid", ... }`
+
+2.  **添加页面:**
+    *   `POST /api/v1/units/{unit_id}/pages`
+    *   **选项 A (二进制):** 通过 `multipart/form-data` 上传图像。
+    *   **选项 B (链接):** JSON 载荷 `{ "url": "https://cdn.example.com/page1.jpg", "page_number": 1 }`。
+
+### 4. 后台处理
+后台工作器接收任务(对于批量上传)并执行以下操作:
+1.  **解压:** 提取压缩包。
+2.  **哈希:** 为每个图像计算加密哈希。这允许在节点上进行去重。
+3.  **资源生成:** 为每个文件创建 `urn:mvn:asset:{uuid}` 记录。
+4.  **优化:** (可选) 如果配置了,生成网页优化版本(WebP/AVIF)。
+5.  **完成:** 章节(单元)被标记为 `READY` 并对用户可见。
+
+## 错误处理
+
+如果后台进程失败(例如损坏的 zip 文件),任务状态会更新为 `FAILED`。管理员可以查询任务状态以查看错误日志。

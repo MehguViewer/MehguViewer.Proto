@@ -27,8 +27,6 @@ export default async function Layout({
             rel="noreferrer"
             className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Github className="size-4" />
-            <span>MehguViewer.Proto</span>
           </a>
         ),
       }}

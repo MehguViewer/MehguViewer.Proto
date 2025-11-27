@@ -1,0 +1,113 @@
+---
+title: 媒体交付与进度
+description: MehguViewer 如何处理安全的图像加载和阅读进度。
+---
+
+# 媒体交付与进度
+
+本节详细说明核心节点如何向客户端交付受保护的内容(图像/视频)以及如何跟踪用户的阅读进度。
+
+## 图像加载策略
+
+由于标准的 HTML `<img>` 标签无法附加自定义头(如 `Authorization: Bearer ...`),MehguViewer 提供两种加载受保护内容的策略。
+
+### 1. 代理模式(安全与私密)
+
+在此模式下,客户端通过核心节点的 API 请求资源。核心节点在提供文件之前验证用户的会话和权限。
+
+**端点:** `GET /api/v1/assets/{asset_urn}?token={short_lived_token}`
+
+<Mermaid chart={`
+sequenceDiagram
+    participant Client as 客户端
+    participant Core as 核心节点
+    participant Storage as 存储
+
+    Client->>Core: GET /api/v1/assets/urn:mvn:asset:123?token=xyz
+    Core->>Core: 验证令牌与权限
+    alt 已授权
+        Core->>Storage: 获取数据
+        Storage-->>Core: 二进制数据
+        Core-->>Client: 200 OK (图像数据)
+    else 未授权
+        Core-->>Client: 403 禁止访问
+    end
+`} />
+
+*   **优点:** 最高隐私(核心节点隐藏存储位置),精细的访问控制。
+*   **缺点:** 核心节点负载较高,延迟略高。
+*   **使用场景:** 当实例清单中未提供 `image_cdn_url` 时使用。
+
+### 2. CDN 模式(性能)
+
+如果核心节点配置了外部 CDN(例如 S3 预签名 URL、Cloudflare),它会在实例清单中公开 `image_cdn_url`。
+
+**流程:**
+1.  客户端获取章节详情。
+2.  响应包含 `asset_id`。
+3.  客户端构造 URL: `${image_cdn_url}/${asset_id}`。
+
+<Mermaid chart={`
+sequenceDiagram
+    participant Client as 客户端
+    participant Core as 核心节点
+    participant CDN
+
+    Client->>Core: GET /api/v1/instance
+    Core-->>Client: { "image_cdn_url": "https://cdn.example.com" }
+    
+    Client->>CDN: GET https://cdn.example.com/urn:mvn:asset:123
+    CDN-->>Client: 200 OK (图像)
+`} />
+
+*   **优点:** 最快的交付速度,减轻核心节点带宽负担。
+*   **缺点:** 依赖 CDN 安全性(例如签名 Cookie 或公开存储桶)。
+*   **使用场景:** 当 `image_cdn_url` 可用时优先使用。
+
+### 3. 分层图像策略
+
+为了优化带宽和性能,核心节点强制执行 3 层图像策略。客户端应根据其上下文请求适当的变体。
+
+**端点:** `GET /api/v1/assets/{asset_urn}?variant={type}`
+
+| 变体 | 最大宽度 | 格式 | 使用场景 |
+| :--- | :--- | :--- | :--- |
+| `THUMBNAIL` | 400px | WebP/JPEG | 网格视图、列表、头像 |
+| `WEB` | 1600px | WebP/AVIF | **默认**。阅读视图、页面显示 |
+| `RAW` | 原始 | 原始 | 存档、下载、"原始质量"模式 |
+
+**注意:** 核心节点应在内容注入时预生成 `THUMBNAIL` 和 `WEB` 变体。
+
+---
+
+## 阅读进度跟踪
+
+核心节点为用户交互的每个系列维护一个"书签"。这允许无缝的跨设备同步。
+
+### 数据模型
+
+`ReadingProgress` 对象跟踪:
+*   **系列 URN:** 哪个系列。
+*   **章节 ID:** 最后打开的章节。
+*   **页码:** 具体页面(用于恢复中途阅读)。
+*   **状态:** `reading`、`completed`、`dropped`、`plan_to_read`。
+
+### 同步流程
+
+1.  **更新:** 当用户翻页时,客户端发送 `PUT` 请求。
+    *   `PUT /api/v1/series/{series_id}/progress`
+    *   载荷: `{ "last_read_chapter_id": "...", "page_number": 5 }`
+
+2.  **检索:** 打开系列时,客户端获取最后位置。
+    *   `GET /api/v1/series/{series_id}/progress`
+
+3.  **历史:** 显示"继续阅读"书架。
+    *   `GET /api/v1/me/history`
+
+```json title="进度载荷示例"
+{
+  "last_read_chapter_id": "urn:mvn:unit:550e8400-e29b-41d4-a716-446655440000",
+  "page_number": 12,
+  "completed": false
+}
+```

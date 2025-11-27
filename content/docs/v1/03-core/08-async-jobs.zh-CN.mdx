@@ -1,0 +1,97 @@
+---
+title: 异步工作流
+description: 处理长时间运行的任务,如内容注入和迁移。
+---
+
+# 异步工作流
+
+对于需要超过几秒钟的操作(例如解压 500MB 的 ZIP 文件、导入 10,000 条历史记录),核心 API 使用异步"任务"模式。
+
+## 任务生命周期
+
+服务器不会阻塞 HTTP 请求直到完成,而是立即返回 `202 已接受` 响应。
+
+### 1. 启动
+
+当您触发长时间运行的任务时:
+
+```http
+POST /api/v1/series/{id}/chapters
+Content-Type: multipart/form-data
+...
+```
+
+服务器响应:
+
+```http
+HTTP/1.1 202 已接受
+Location: /api/v1/jobs/550e8400-e29b-41d4-a716-446655440000
+
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "processing"
+}
+```
+
+### 2. 轮询
+
+客户端应每隔几秒轮询 `Location` 头中提供的 URL(或使用 `job_id` 构造它)。
+
+**端点:** `GET /api/v1/jobs/{job_id}`
+
+**响应(处理中):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "INGEST_CHAPTER",
+  "status": "PROCESSING",
+  "progress_percentage": 45,
+  "result_urn": null,
+  "error_details": null
+}
+```
+
+### 3. 完成
+
+当 `status` 变为 `COMPLETED` 或 `FAILED` 时,客户端可以停止轮询。
+
+**响应(成功):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "INGEST_CHAPTER",
+  "status": "COMPLETED",
+  "progress_percentage": 100,
+  "result_urn": "urn:mvn:unit:...",
+  "error_details": null
+}
+```
+
+## UI 模式
+
+### 乐观 UI vs. 轮询状态
+
+*   **乐观 UI:** 对于小操作(如"点赞"或"标记已读"),立即假设成功。
+*   **轮询状态:** 对于任务,**不要**使用乐观 UI。显示进度条或"处理中..."旋转器。用户需要知道服务器是否正确解压了他们的文件。
+
+### 推荐流程
+
+<Mermaid chart={`
+sequenceDiagram
+    participant User as 用户
+    participant Client as 客户端
+    participant Core as 核心节点
+
+    User->>Client: 上传 ZIP
+    Client->>Core: POST /chapters
+    Core-->>Client: 202 已接受 (任务 ID)
+    
+    loop 每 2 秒
+        Client->>Core: GET /jobs/{id}
+        Core-->>Client: { status: "PROCESSING", progress: 45 }
+        Client-->>User: 更新进度条
+    end
+
+    Core-->>Client: { status: "COMPLETED", result_urn: "..." }
+    Client->>Client: 重定向到新章节
+`} />
