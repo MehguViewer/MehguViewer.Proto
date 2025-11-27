@@ -278,6 +278,33 @@ components:
         - series_id
         - unit_number
 
+    # Unit Create (Manual)
+    UnitCreate:
+      type: object
+      properties:
+        unit_number:
+          type: number
+        title:
+          type: string
+      required:
+        - unit_number
+
+    # Page
+    Page:
+      type: object
+      properties:
+        page_number:
+          type: integer
+        asset_urn:
+          type: string
+          description: The URN of the image asset.
+        url:
+          type: string
+          format: uri
+          description: External CDN URL (if not hosted locally).
+      required:
+        - page_number
+
     # Reading Progress
     ReadingProgress:
       type: object
@@ -301,6 +328,45 @@ components:
         - page_number
         - status
         - updated_at
+
+    # Collection
+    Collection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_system:
+          type: boolean
+          description: If true, this is a default list (e.g., READING) and cannot be deleted.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeriesURN'
+      required:
+        - id
+        - name
+        - is_system
+
+    # Report
+    Report:
+      type: object
+      properties:
+        target_urn:
+          type: string
+          description: URN of the content being reported.
+        reason:
+          type: string
+          description: Explanation of the violation.
+        severity:
+          type: string
+          enum: [spam, harassment, spoiler, other]
+      required:
+        - target_urn
+        - reason
+        - severity
 
 paths:
   /.well-known/mehgu-node:
@@ -608,7 +674,7 @@ paths:
 
   /api/v1/series/{seriesId}/chapters:
     post:
-      summary: Upload Chapter
+      summary: Upload Chapter (Bulk)
       description: |
         Upload a chapter archive (.zip, .cbz, .epub).
         The server will unpack, hash assets, and generate URNs asynchronously.
@@ -638,6 +704,10 @@ paths:
                   type: string
                   description: JSON string containing title, number, language.
                   example: '{"title": "Chapter 1", "number": 1, "language": "en"}'
+                parser_config:
+                  type: string
+                  description: JSON string configuring the parser (e.g., regex for filenames).
+                  example: '{"mode": "regex", "pattern": "(\\d+).jpg"}'
               required:
                 - file
                 - metadata
@@ -661,6 +731,37 @@ paths:
           description: Forbidden (Admin only)
 
   /api/v1/series/{seriesId}/units:
+    post:
+      summary: Create Unit (Manual)
+      description: Create a chapter/episode container for manual page uploading.
+      operationId: createUnit
+      tags: [Management]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: seriesId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitCreate'
+      responses:
+        '201':
+          description: Unit Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden (Admin only)
     get:
       summary: List Units (Chapters)
       operationId: listUnits
@@ -694,6 +795,61 @@ paths:
                       $ref: '#/components/schemas/Unit'
                   meta:
                     $ref: '#/components/schemas/CursorPagination'
+
+  /api/v1/units/{unitId}/pages:
+    post:
+      summary: Add Page to Unit
+      description: Upload a single page image OR register an external CDN URL.
+      operationId: addPage
+      tags: [Management]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                page_number:
+                  type: integer
+                file:
+                  type: string
+                  format: binary
+                  description: The image file (optional if url is provided).
+              required:
+                - page_number
+          application/json:
+            schema:
+              type: object
+              properties:
+                page_number:
+                  type: integer
+                url:
+                  type: string
+                  format: uri
+                  description: External CDN URL.
+              required:
+                - page_number
+                - url
+      responses:
+        '201':
+          description: Page Added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
   /api/v1/series/{seriesId}/progress:
     put:
@@ -951,3 +1107,130 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+
+  /api/v1/collections:
+    get:
+      summary: List Collections
+      description: Returns user's created lists and default system lists.
+      operationId: listCollections
+      tags: [Library]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of Collections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collection'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Create Collection
+      description: Create a custom list (e.g., "Isekai Trash").
+      operationId: createCollection
+      tags: [Library]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+                - name
+      responses:
+        '201':
+          description: Collection Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Collection'
+        '401':
+          description: Unauthorized
+
+  /api/v1/collections/{collection_id}/items:
+    post:
+      summary: Add Item to Collection
+      operationId: addCollectionItem
+      tags: [Library]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_urn:
+                  $ref: '#/components/schemas/SeriesURN'
+              required:
+                - target_urn
+      responses:
+        '200':
+          description: Item Added
+        '401':
+          description: Unauthorized
+        '404':
+          description: Collection Not Found
+
+  /api/v1/collections/{collection_id}/items/{urn}:
+    delete:
+      summary: Remove Item from Collection
+      operationId: removeCollectionItem
+      tags: [Library]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: urn
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/SeriesURN'
+      responses:
+        '204':
+          description: Item Removed
+        '401':
+          description: Unauthorized
+        '404':
+          description: Collection or Item Not Found
+
+  /api/v1/reports:
+    post:
+      summary: Submit Report
+      description: Flag content for moderation.
+      operationId: createReport
+      tags: [Moderation]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Report'
+      responses:
+        '202':
+          description: Report Accepted
+        '401':
+          description: Unauthorized

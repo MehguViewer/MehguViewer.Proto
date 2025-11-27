@@ -2,10 +2,10 @@
   "title": "Architecture",
   "pages": [
     "index",
-    "02-trust-model",
-    "03-urns",
-    "04-network-policy",
-    "05-node-discovery",
-    "06-library-sync"
+    "01-security-architecture",
+    "02-urns",
+    "03-network-policy",
+    "04-node-discovery",
+    "05-library-sync"
   ]
 }

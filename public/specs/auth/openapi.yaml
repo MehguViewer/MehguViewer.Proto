@@ -33,6 +33,15 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: |
+        Standard OIDC Bearer Token.
+        
+        **Supported Scopes:**
+        - `openid profile email`: Standard OIDC scopes.
+        - `mvn:read`: Basic read access to public content.
+        - `mvn:social:write`: Permission to post comments.
+        - `mvn:ingest`: **Admin:** Permission to upload Series/Chapters.
+        - `mvn:admin`: **Root:** Full destructive access (Delete Series, Ban Users).
 
   schemas:
     # User URN

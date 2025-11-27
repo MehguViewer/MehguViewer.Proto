@@ -1,0 +1,8 @@
+{
+  "title": "Core API",
+  "pages": [
+    "index",
+    "01-media-delivery",
+    "02-content-ingestion"
+  ]
+}
