@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { baseOptions } from '@/app/layout.config';
 import { source } from '@/lib/source';
 import { dictionary } from '@/lib/dictionary';
+import { Github } from 'lucide-react';
 
 export default async function Layout({ 
   params, 
@@ -18,6 +19,19 @@ export default async function Layout({
     <DocsLayout 
       tree={source.pageTree[lang]} 
       {...baseOptions}
+      sidebar={{
+        footer: (
+          <a
+            href="https://github.com/MehguViewer/MehguViewer.Proto"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Github className="size-4" />
+            <span>MehguViewer.Proto</span>
+          </a>
+        ),
+      }}
       links={[
         {
           text: dict.nav.documentation,

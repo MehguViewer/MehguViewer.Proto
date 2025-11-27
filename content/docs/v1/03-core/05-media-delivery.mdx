@@ -1,0 +1,99 @@
+---
+title: Media Delivery & Progress
+description: How MehguViewer handles secure image loading and reading progress.
+---
+
+# Media Delivery & Progress
+
+This section details how the Core Node delivers protected content (images/video) to the client and how it tracks user reading progress.
+
+## Image Loading Strategy
+
+Since standard HTML `<img>` tags cannot attach custom headers (like `Authorization: Bearer ...`), MehguViewer provides two strategies for loading protected content.
+
+### 1. Proxy Mode (Secure & Private)
+
+In this mode, the Client requests the asset through the Core Node's API. The Core Node verifies the user's session and permissions before serving the file.
+
+**Endpoint:** `GET /api/v1/assets/{asset_urn}?token={short_lived_token}`
+
+<Mermaid chart={`
+sequenceDiagram
+    participant Client
+    participant Core
+    participant Storage
+
+    Client->>Core: GET /api/v1/assets/urn:mvn:asset:123?token=xyz
+    Core->>Core: Verify Token & Permissions
+    alt Authorized
+        Core->>Storage: Fetch Blob
+        Storage-->>Core: Binary Data
+        Core-->>Client: 200 OK (Image Blob)
+    else Unauthorized
+        Core-->>Client: 403 Forbidden
+    end
+`} />
+
+*   **Pros:** Highest privacy (Core hides the storage location), granular access control.
+*   **Cons:** Higher load on the Core Node, slightly higher latency.
+*   **Usage:** Use when `image_cdn_url` is not provided in the Instance Manifest.
+
+### 2. CDN Mode (Performance)
+
+If the Core Node is configured with an external CDN (e.g., S3 Presigned URLs, Cloudflare), it exposes an `image_cdn_url` in its Instance Manifest.
+
+**Flow:**
+1.  Client fetches Chapter details.
+2.  Response includes `asset_id`s.
+3.  Client constructs URL: `${image_cdn_url}/${asset_id}`.
+
+<Mermaid chart={`
+sequenceDiagram
+    participant Client
+    participant Core
+    participant CDN
+
+    Client->>Core: GET /api/v1/instance
+    Core-->>Client: { "image_cdn_url": "https://cdn.example.com" }
+    
+    Client->>CDN: GET https://cdn.example.com/urn:mvn:asset:123
+    CDN-->>Client: 200 OK (Image)
+`} />
+
+*   **Pros:** Fastest delivery, offloads bandwidth from Core.
+*   **Cons:** Relies on CDN security (e.g., signed cookies or public buckets).
+*   **Usage:** Preferred when `image_cdn_url` is available.
+
+---
+
+## Read Progress Tracking
+
+The Core Node maintains a "bookmark" for every user on every series they interact with. This allows for seamless cross-device synchronization.
+
+### Data Model
+
+The `ReadingProgress` object tracks:
+*   **Series URN:** Which series.
+*   **Chapter ID:** The last chapter opened.
+*   **Page Number:** The specific page (for resuming mid-chapter).
+*   **Status:** `reading`, `completed`, `dropped`, `plan_to_read`.
+
+### Sync Flow
+
+1.  **Update:** When a user turns a page, the Client sends a `PUT` request.
+    *   `PUT /api/v1/series/{series_id}/progress`
+    *   Payload: `{ "last_read_chapter_id": "...", "page_number": 5 }`
+
+2.  **Retrieve:** When opening a series, the Client fetches the last position.
+    *   `GET /api/v1/series/{series_id}/progress`
+
+3.  **History:** To show a "Continue Reading" shelf.
+    *   `GET /api/v1/me/history`
+
+```json title="Example Progress Payload"
+{
+  "last_read_chapter_id": "urn:mvn:unit:550e8400-e29b-41d4-a716-446655440000",
+  "page_number": 12,
+  "completed": false
+}
+```

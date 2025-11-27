@@ -23,6 +23,7 @@ export const baseOptions: BaseLayoutProps = {
     },
   ],
   i18n: true,
+  githubUrl: 'https://github.com/MehguViewer',
   themeSwitch: {
     enabled: false,
   },
