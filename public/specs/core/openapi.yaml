@@ -486,6 +486,80 @@ paths:
                   - node_name
                   - auth_server
 
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      operationId: login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Login Successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  username:
+                    type: string
+                  role:
+                    type: string
+        '401':
+          description: Invalid credentials
+
+  /api/v1/auth/register:
+    post:
+      summary: Register
+      operationId: register
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Registration Successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  username:
+                    type: string
+                  role:
+                    type: string
+        '409':
+          description: User exists
+        '403':
+          description: Registration closed
+
   /api/v1/instance:
     get:
       summary: Get Node Manifest
@@ -975,6 +1049,33 @@ paths:
         '403':
           description: Forbidden
 
+  /api/v1/series/{seriesId}/units/{unitId}/pages:
+    get:
+      summary: Get Unit Pages
+      description: List pages for a specific unit (chapter).
+      operationId: getUnitPages
+      tags: [Management]
+      parameters:
+        - name: seriesId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Page'
+
   /api/v1/series/{seriesId}/progress:
     put:
       summary: Update Read Progress
@@ -1140,6 +1241,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+
+  /api/v1/me:
+    delete:
+      summary: Delete Account
+      description: Permanently delete your account and anonymize content.
+      operationId: deleteAccount
+      tags: [User]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Account Deleted
+        '401':
+          description: Unauthorized
 
   /api/v1/me/history:
     get:
@@ -1490,3 +1605,124 @@ paths:
                 $ref: '#/components/schemas/Job'
         '404':
           description: Job Not Found
+
+  /api/v1/users:
+    get:
+      summary: List Users
+      operationId: listUsers
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthorSnapshot'
+    post:
+      summary: Create User
+      operationId: createUser
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+              required:
+                - username
+                - password
+                - role
+      responses:
+        '200':
+          description: User Created
+        '409':
+          description: User exists
+
+  /api/v1/users/{id}:
+    delete:
+      summary: Delete User
+      operationId: deleteUser
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User Deleted
+
+  /api/v1/system/metadata:
+    put:
+      summary: Update Node Metadata
+      description: Update the public node information.
+      operationId: updateNodeMetadata
+      tags: [System]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Metadata Updated
+
+  /api/v1/system/admin/password:
+    post:
+      summary: Create Admin User
+      description: Initialize the first admin user.
+      operationId: createAdminUser
+      tags: [System]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+              required:
+                - password
+      responses:
+        '200':
+          description: Admin Created
+        '409':
+          description: Admin already exists
+
+  /api/v1/debug/seed:
+    post:
+      summary: Seed Debug Data
+      description: Populates the in-memory database with sample data.
+      operationId: seedDebugData
+      tags: [Debug]
+      responses:
+        '200':
+          description: Debug data seeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
